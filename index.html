@@ -320,7 +320,7 @@
             function stopNow() {
                 if (!stop) {
                     stop = true;
-                    htmlIDs.bStop.innerHTML = "Restart";
+                    htmlIDs.bStop.innerHTML = "Go";
                 } else {
                     stop = false;
                     htmlIDs.bStop.innerHTML = "Stop";
@@ -506,7 +506,7 @@
             <label>Slow Down:</label>
             <input type="number" id="slow" value="500">
             <label>Autostop on large play</label>
-            <input type="checkbox" id="autoStop" checked value="1">
+            <input type="checkbox" id="autoStop" value="1">
             <button id="autoplay" onclick="autoPlay()">Auto Play</button>
         </div>
         <script>
@@ -538,9 +538,8 @@
                 highestBet: document.getElementById("highestBet"),
                 autostop: document.getElementById("autoStop")
             }
-            //init();
-            //autoPlay();
             init();
+            autoPlay();
         </script>
     </body>   
 </html>
