@@ -1,0 +1,546 @@
+<html>
+    <head>
+        <title>BlackJack</title>
+        <script>
+            var desk = new Array();
+            var suit = new Array("H", "D", "C", "S");
+            var card = new Array("A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K");
+            var desks = 4;
+            var stop = false;
+            var stats = {
+                rounds: 0,
+                wins: 0,
+                losses: 0,
+                winStreak: 0,
+                lossStreak: 0,
+                currentLossRun: 0,
+                currentWinRun: 0,
+                highestBet: 0
+            }
+
+            function createDeck(d){
+                for(let i = 0; i < d; i++) {
+                    suit.forEach(function(suit) {
+                        card.forEach(function(card) {
+                            let v = 0;
+                            if(card == "A") {
+                                v = 11;
+                            } else if(card == "J" || card == "Q" || card == "K") {
+                                v = 10;
+                            } else {
+                                v = parseInt(card);
+                            }
+                            desk.push({name:card,suit:suit, value:v});
+                        });
+                     });           
+                } 
+            }
+            function shuffle() {
+                for(let i = 0; i < desk.length; i++) {
+                    let j = Math.floor(Math.random() * desk.length);
+                    let temp = desk[i];
+                    desk[i] = desk[j];
+                    desk[j] = temp;
+                }
+            }   
+            var player = {
+                name: "Player",
+                hand: new Array(),
+                bank: 0,
+                bet: 0,
+                lost: false,
+                currentLoss: 0,
+                push: false,
+                showHand: function() {
+                    showAHand(this.hand,htmlIDs.player,htmlIDs.playerScore,false);
+                }
+            };
+            var house = {
+                name: "House",
+                hand: new Array(),
+                showHand: function(hide) {
+                    showAHand(this.hand,htmlIDs.house,htmlIDs.houseScore,hide);
+                }
+            };
+            function showHands(hide) {
+                player.showHand();
+                house.showHand(hide);
+                showStats();
+            }
+            function showStats() {
+                htmlIDs.pBank.innerHTML = formatToUSD(player.bank);
+                if (player.lost) {
+                    htmlIDs.pBank.style.color = "red";
+                } else {
+                    htmlIDs.pBank.style.color = "green";
+                }
+                htmlIDs.currentBet.innerHTML = formatToUSD(player.bet);
+                htmlIDs.rounds.innerHTML = stats.rounds;
+                htmlIDs.lossStreak.innerHTML = stats.lossStreak;
+                htmlIDs.wins.innerHTML = stats.wins;
+                htmlIDs.losses.innerHTML = stats.losses;
+                htmlIDs.winStreak.innerHTML = stats.winStreak;
+                htmlIDs.highestBet.innerHTML = formatToUSD(stats.highestBet);
+                if (stats.losses > 0) {
+                    htmlIDs.ratio.innerHTML = (stats.wins / stats.losses).toFixed(2);
+                } else {
+                    htmlIDs.ratio.innerHTML = stats.wins;
+                }
+            }   
+            function formatToUSD(value) {
+                let rtn = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+                return rtn.replace(".00", "");
+            }
+            function showAHand(hand,cardDiv,scoreDiv,hideSecond) {
+                let score = calulateHand(hand);
+                scoreDiv.innerHTML = score;
+                let html = "";
+                let first = true;
+                hand.forEach(function(card) {
+                    let name = card.name;
+                    if(!first && hideSecond) {
+                        name = "?";
+                    }
+                    html += "<div class='cardShape'>" + name + "</div>";
+                    first = false;
+                });
+                cardDiv.innerHTML = html;
+            }
+            function calulateHand(hand) {
+                let total = 0;
+                let aces = 0;
+                hand.forEach((c) => {
+                    total += parseInt(c.value);
+                    if(c.value == 11) {
+                        aces++;
+                    }
+                });
+                while(total > 21 && aces > 0) {
+                    total -= 10;
+                    aces--;
+                }
+                return total;
+            }
+            function dealCard(hand) {
+                if (desk.length == 0) {
+                    createDeck(desks);
+                    shuffle();
+                }
+                let card = desk[Math.floor(Math.random() * desk.length)];
+                hand.push(card);
+                desk.splice(desk.indexOf(card), 1);
+                showHands(true);
+            }
+            function deal() {
+                player.hand = new Array();
+                house.hand = new Array();
+                dealCard(player.hand);
+                dealCard(player.hand);
+                dealCard(house.hand);
+                dealCard(house.hand);
+            }
+            function hit() {
+                dealCard(player.hand);
+                let pTotal = calulateHand(player.hand);
+            }
+            function stand() {
+                let hTotal = calulateHand(house.hand);
+                let pTotal = calulateHand(player.hand);
+                if(pTotal > 21) {
+                    endRound();
+                    return;
+                }
+                while(hTotal < pTotal) {
+                    dealCard(house.hand);
+                    hTotal = calulateHand(house.hand);
+                }
+                endRound();
+            }
+
+            function endRound(){
+                let hTotal = calulateHand(house.hand);
+                let pTotal = calulateHand(player.hand);
+                stats.rounds++;
+
+                player.bet = parseInt(player.bet);
+                player.bank = parseInt(player.bank);
+
+                if(hTotal > 21) {
+                    //house bust
+                    player.bank += player.bet;
+                    player.lost = false;
+                    stats.wins++;
+                    showHands(false);
+                    return;
+                }
+                if (pTotal > 21) {
+                    //player bust
+                    player.bank -= player.bet;
+                    player.lost = true;
+                    stats.losses++;
+                    showHands(false);
+                    return;
+                }
+                if(pTotal > hTotal) {
+                    player.bank += player.bet;
+                    player.lost = false;
+                    stats.wins++;
+                } else if(pTotal < hTotal) {
+                    player.bank -= player.bet;
+                    player.lost = true;
+                    stats.losses++;
+                } else {
+                    player.push = true;
+                }
+                showHands(false);
+            }
+
+            function autoPlay() {
+                let startBid = parseInt(document.getElementById("startBid").value);
+                let lossAdd = parseInt(document.getElementById("lossAdd").value);
+                let restart = parseInt(document.getElementById("restart").value);
+                let hitOn = parseInt(document.getElementById("hitOn").value);
+                let warning = document.getElementById("warning");
+                htmlIDs.stop.style.display = "block";
+                htmlIDs.startover.style.display = "block";
+                htmlIDs.autoplay.style.display = "none";
+                warning.innerHTML = "";
+                if (player.bank < startBid) {
+                    //update warning
+                    warning.innerHTML = "You are out of money";
+                    htmlIDs.bStop.disabled = true;
+                    htmlIDs.bStop.style.display = "none";
+                    htmlIDs.autoplay.style.display = "none";
+                    showStats();
+                    return;
+                }
+                htmlIDs.bStop.disabled = false;
+                //place bet
+                if (player.push) {
+                    player.push = false;
+                }else{
+                    if (player.lost) {
+                        //loss
+                        player.currentLoss += player.bet;
+                        stats.currentLossRun++;
+                        stats.currentWinRun = 0;
+                        if (stats.currentLossRun > stats.lossStreak) {
+                            stats.lossStreak = stats.currentLossRun;
+                        }
+                        if (restart != 0 && player.bet > restart) {
+                            player.bet = startBid;
+                            player.lost = false;
+                            player.currentLoss = 0;
+                            stats.currentLossRun = 0;
+                        } else {
+                            player.bet = player.currentLoss + lossAdd;
+                        }
+                    }else{
+                        //won
+                        player.bet = startBid;
+                        player.currentLoss = 0;
+                        stats.currentLossRun = 0;
+                        stats.currentWinRun++;
+                        if (stats.currentWinRun > stats.winStreak) {
+                            stats.winStreak = stats.currentWinRun;
+                        }
+                    }    
+                }
+
+                //round starting
+                
+                //if bet is 1/3 of the bank, stop
+                if (player.bank / 3 < player.bet && htmlIDs.autostop.checked) {
+                    stopNow();
+                }
+
+                if (player.bank < player.bet) {
+                    player.bet = player.bank;
+                }
+
+                if (stats.highestBet < player.bet) {
+                    stats.highestBet = player.bet;
+                }
+
+                deal();
+                while (calulateHand(player.hand) <= hitOn) {
+                    hit();
+                }
+                stand();
+                if (!stop) {
+                    let slow = 100;
+                    try {
+                        slow = parseInt(document.getElementById("slow").value);
+                    } catch {
+                    }
+                    if (!player.lost){
+                        player.bet = startBid;
+                    }
+                    setTimeout(autoPlay, slow);
+                }
+            }
+
+            function init() {
+                player.bank = htmlIDs.startBank.value;
+                player.bet = htmlIDs.startBid.value;
+                player.lost = false;
+                player.currentLoss = 0;
+                player.bet = htmlIDs.startBid.value;
+                player.hand = new Array();
+                player.push = true;
+                house.hand = new Array();
+                htmlIDs.pBank.innerHTML = formatToUSD(player.bank);
+                htmlIDs.bStop.innerHTML = "Stop";
+                htmlIDs.rounds.innerHTML = 0;
+                htmlIDs.lossStreak.innerHTML = 0;
+                htmlIDs.wins.innerHTML = 0;
+                htmlIDs.losses.innerHTML = 0;
+                htmlIDs.winStreak.innerHTML = 0;
+                htmlIDs.ratio.innerHTML = 0;
+                htmlIDs.currentBet.innerHTML = formatToUSD(player.bet);
+                htmlIDs.stop.style.display = "none";
+                htmlIDs.startover.style.display = "none";
+                htmlIDs.autoplay.style.display = "block";
+                stats.rounds = 0;
+                stats.wins = 0;
+                stats.losses = 0;
+                stats.winStreak = 0;
+                stats.lossStreak = 0;
+                stats.currentLossRun = 0;
+                stats.currentWinRun = 0;
+                stats.highestBet = 0;
+                stop = false;
+                warning.innerHTML = "";
+                createDeck(desks);
+                shuffle();
+                //deal();
+                showStats();
+            }
+
+            function stopNow() {
+                if (!stop) {
+                    stop = true;
+                    htmlIDs.bStop.innerHTML = "Restart";
+                } else {
+                    stop = false;
+                    htmlIDs.bStop.innerHTML = "Stop";
+                    autoPlay();
+                }
+            }
+        </script>
+        <style>
+            .cardShape {
+                width: 50px;
+                height: 75px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                text-align: center;
+                font-size: 20px;
+                margin: 5px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: #fff;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+            .cardContainer {
+                display: flex;
+                flex-direction: row;
+                margin-bottom: 10px;
+            }
+            .offset {
+                margin-left: 4px;
+                margin-bottom: 7px;
+            }
+            #divHouseCard, #divPlayerCard{
+                display: flex;
+                flex-direction: row;
+            }
+            #houseScore, #playerScore {
+                font-size: 20px;
+                margin-left: 10px;
+                align-self: center;
+            }
+            #warning {
+                color: red;
+                font-weight: bold;
+                margin-top: 10px;
+            }
+            #divPlay {
+                display: flex;
+                flex-direction: column;
+                background-color: #fff;
+                padding: 10px;
+                border-radius: 5px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                margin-top: 20px;
+            }
+            #divBet, #divPlay {
+                margin-top: 10px;
+            }
+            input {
+                width: 70px;
+                margin-left: 4px;
+                margin-bottom: 7px;
+                padding: 5px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif
+            }
+            button {
+                padding: 5px 10px;
+                border: none;
+                border-radius: 3px;
+                background-color: #007bff;
+                color: #fff;
+                cursor: pointer;
+                margin-top: 10px;
+            }
+            button:hover {
+                background-color: #0056b3;
+            }
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f0f0f0;
+                color: #333;
+                margin: 0;
+                padding: 20px;
+            }
+            h1, h2 {
+                color: #444;
+            }
+            #divButtons {
+                display: flex;
+                flex-direction: row;
+            }
+            #divButtons button {
+                margin-right: 10px;
+            }
+            #divButtons button:last-child {
+                margin-right: 0;
+            }
+            #stats {
+                display: flex;
+                flex-direction: row;
+                background-color: #fff;
+                padding: 10px;
+                border-radius: 5px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                margin-top: 20px;
+            }
+            #stats h2 {
+                margin-right: 10px;
+            }
+            .col1, .col2 {
+                display: flex;
+                flex-direction: column;
+            }
+            .col1 {
+                margin-right: 20px;
+            }
+            .col2 {
+                margin-left: 20px;
+            }
+        </style>
+    </head> 
+    <body>
+        <h1>House</h1>
+        <div class="cardContainer">
+            <div id="divHouseCard">
+                <div class="cardShape">?</div>
+                <div class="cardShape">?</div>
+            </div>
+            <div id="divHouseScore">0</div>
+        </div>
+        <h1>Player <spen id="pBank"></spen></h1>
+        <div class="cardContainer">
+            <div id="divPlayerCard">
+                <div class="cardShape">?</div>
+                <div class="cardShape">?</div>
+            </div>
+            <div id="divPlayerScore">0</div>
+        </div>
+        <div id="warning">
+        </div>
+        <div id="divBet">
+            <label>Bet:</label>
+            <div id="currentBet" class="offset">$0</div>
+        </div>
+        <div id="stats">
+            <h2>Stats</h2>
+            <div class="col1">
+                <label>Highest Bet</label>
+                <div id="highestBet" class="offset">0</div>
+                <label>Rounds:</label>
+                <div id="rounds" class="offset">0</div>
+                <label>Wins:</label>
+                <div id="wins" class="offset">0</div>
+                <label>Losses:</label>
+                <div id="losses" class="offset">0</div>
+            </div>
+            <div class="col2">
+                <label>Wins to Loss Ratio</label>
+                <div id="ratio" class="offset">0</div>
+                <label>Win Streak:</label>
+                <div id="winStreak" class="offset">0</div>
+                <label>Loss Streak:</label>
+                <div id="streak" class="offset">0</div>
+            </div>
+        </div>
+        <div id="divButtons">
+            <button onclick="stopNow()" id="bStop">Stop</button>
+            <button id="startOver" onclick="init();">Start Over</button>
+        </div>
+        <div id="divPlay">
+            <h2>Auto Play</h2>
+            <label>Player Start Bank</label>
+            <input type="number" id="startBank" value="1000">
+            <label>Start Bid</label>
+            <input type="number" id="startBid" value="1">
+            <label>Add this amount to the bid each loss:</label>
+            <input type="number" id="lossAdd" value="1">
+            <label>Restart after:</label>
+            <input type="number" id="restart" value="0" title="0 to never restart">
+            <label>Hit on:</label>
+            <input type="number" id="hitOn" value="15">
+            <label>Slow Down:</label>
+            <input type="number" id="slow" value="500">
+            <label>Autostop on large play</label>
+            <input type="checkbox" id="autoStop" checked value="1">
+            <button id="autoplay" onclick="autoPlay()">Auto Play</button>
+        </div>
+        <script>
+            var htmlIDs = {
+                startBank: document.getElementById("startBank"),
+                house: document.getElementById("divHouseCard"),
+                player: document.getElementById("divPlayerCard"),
+                houseScore: document.getElementById("divHouseScore"),
+                playerScore: document.getElementById("divPlayerScore"),
+                bet: document.getElementById("divBet").getElementsByTagName("div"),
+                currentBet: document.getElementById("currentBet"),
+                pBank: document.getElementById("pBank"),
+                rounds: document.getElementById("rounds"),
+                bStop: document.getElementById("bStop"),
+                warning: document.getElementById("warning"),
+                startBid: document.getElementById("startBid"),
+                lossAdd: document.getElementById("lossAdd"),
+                restart: document.getElementById("restart"),
+                hitOn: document.getElementById("hitOn"),
+                slow: document.getElementById("slow"),
+                lossStreak: document.getElementById("streak"),
+                wins: document.getElementById("wins"),
+                losses: document.getElementById("losses"),
+                winStreak: document.getElementById("winStreak"),
+                ratio: document.getElementById("ratio"),
+                stop: document.getElementById("bStop"),
+                startover: document.getElementById("startOver"),
+                autoplay: document.getElementById("autoplay"),
+                highestBet: document.getElementById("highestBet"),
+                autostop: document.getElementById("autoStop")
+            }
+            //init();
+            //autoPlay();
+            init();
+        </script>
+    </body>   
+</html>
