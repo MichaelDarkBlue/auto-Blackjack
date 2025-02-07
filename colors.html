@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
+    <title>Random Colored Letters</title>
+    <style>
+        * { margin: 0; padding: 0; overflow: hidden; }
+        canvas { display: block; background: black; }
+        .settings-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 320px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: #f9f9f9;
+            font-family: Arial, sans-serif;
+            display: none;
+        }
+        .settings-container h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+        }
+        .setting-item {
+            margin-bottom: 10px;
+        }
+        .setting-item label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .setting-item input, 
+        .setting-item select {
+            width: 100%;
+            padding: 5px;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .setting-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+        .setting-item input[type="range"] {
+            width: 100%;
+        }
+        .save-button {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .save-button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="settingsDiv" class="settings-container">
+        <h3>Settings</h3>
+        <div class="setting-item">
+            <label>Display Text:</label>
+            <input type="text" id="displayText" placeholder="any text" value=".">
+        </div>
+        <div class="setting-item">
+            <label>Theme:</label>
+            <select id="theme">
+                <option value="0">letters</option>
+                <option value="1">words</option>
+            </select>
+        </div>
+        <div class="setting-item">
+            <label>
+                Eraser
+                <input type="checkbox" id="eraser">
+            </label>
+        </div>
+        <div class="setting-item">
+            <label>
+                More Random Colors
+                <input type="checkbox" id="moreRandom">
+            </label>
+        </div>
+        <div class="setting-item">
+            <label>Volume</label>
+            <input type="range" id="volume" min="1" max="1000" value="100">
+        </div>
+        <div class="setting-item">
+            <label>Delay</label>
+            <input type="range" id="speed" min="0" max="500" value="75">
+        </div>
+        <button class="save-button" onclick="exportSettings()">Apply</button>
+    </div>
+
+    <canvas id="myCanvas" onclick="showSettings()"></canvas>
+
+    <script>
+        var letters = "QWERTYUIOPASDFGHJKLZCXVBNMqwertyuiopasdfghjklzxcvb1234567890-/:;()$&@.,?![]{}#%^*+=_\\|~<>•.,?!";
+        var settings = {};
+        const canvas = document.getElementById("myCanvas");
+        const ctx = canvas.getContext("2d");
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function getRandomColor() {
+            return `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
+        }
+
+        let hue = Math.random() * 360;
+        let s = Math.random() * 100;
+        let l = Math.random() * 100;
+        let hueIncrement = 1;
+
+        function getSmoothColor() {
+            hue = (hue + getDirection(hueIncrement)) % 360;
+            s = (s + getDirection(hueIncrement)) % 100;
+            l = (l + 5 + getDirection(hueIncrement)) % 70;
+            return `hsl(${hue}, ${s}%, ${l}%)`;
+        }
+
+        function getDirection(x) {
+            return Math.random() * 2 > 1 ? x : x * -1;
+        }
+
+        function drawRandomLetters() {
+            let chars = letters; 
+            let _volume = 100;
+            let _clear = false;
+            let _eraser = false;
+            let _eraserChance = 0.4;
+            let _speed = 60;
+            let _theme = 0;
+            let _moreRandom = false;
+
+            if (settings.displayText) {
+                chars = settings.displayText;
+                _volume = settings.volume;
+                _speed = settings.speed;
+                _theme = settings.theme;
+                _eraser = settings.eraser;
+                _moreRandom = settings.moreRandom;
+            }
+
+            if (_clear) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            for (let i = 0; i < _volume; i++) {
+                ctx.fillStyle = _moreRandom ? getRandomColor() : getSmoothColor();
+                ctx.font = `${Math.random() * 50 + 20}px Arial`;
+                let c = chars.charAt(Math.floor(Math.random() * chars.length));
+
+                if (_theme == "1") {
+                    c = getRandomWord(chars);
+                }
+
+                ctx.fillText(c, Math.random() * canvas.width, Math.random() * canvas.height);
+            }
+
+            if (_eraser && Math.random() < _eraserChance) {
+                drawBlackCircle();
+            }
+
+            setTimeout(drawRandomLetters, _speed);
+        }
+
+        function getRandomWord(str) {
+            let words = str.split(" ");
+            return words[Math.floor(Math.random() * words.length)];
+        }
+
+        function drawBlackCircle() {
+            ctx.fillStyle = "black";
+            let radius = Math.random() * 80 + 20;
+            let x = Math.random() * canvas.width;
+            let y = Math.random() * canvas.height;
+
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function init() {
+            window.addEventListener("resize", resizeCanvas);
+            resizeCanvas();
+            setTimeout(drawRandomLetters, 1000);
+        }
+
+        function showSettings() {
+            document.getElementById("settingsDiv").style.display = "block";
+        }
+
+        function exportSettings() {
+            settings = {
+                displayText: document.getElementById('displayText').value,
+                theme: document.getElementById('theme').value,
+                eraser: document.getElementById('eraser').checked,
+                moreRandom: document.getElementById('moreRandom').checked,
+                volume: document.getElementById('volume').value,
+                speed: document.getElementById('speed').value
+            };
+
+            document.getElementById("settingsDiv").style.display = "none";
+        }
+
+        init();
+        document.getElementById("displayText").value = letters;
+    </script>
+
+</body>
+</html>
